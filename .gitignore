@@ -1,0 +1,4 @@
+target/
+patrimonio-ti.db
+.idea/
+*.iml
