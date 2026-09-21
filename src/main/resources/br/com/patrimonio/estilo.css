@@ -68,3 +68,11 @@
 .table-cell { -fx-text-fill: #33415a; -fx-alignment: CENTER_LEFT; }
 .check-box { -fx-text-fill: #40516b; -fx-font-weight: bold; }
 .separator .line { -fx-border-color: #e5eaf2; }
+
+.danger-button {
+    -fx-background-color: #dc3545;
+}
+
+.danger-button:hover {
+    -fx-background-color: #b92836;
+}

@@ -20,4 +20,18 @@ public class ManutencaoRepository {
         } catch (SQLException e) { throw new RuntimeException(e); }
         return lista;
     }
+    
+    public void excluir(int id) {
+    String sql = "DELETE FROM manutencao WHERE id = ?";
+
+    try (Connection c = Database.connect();
+         PreparedStatement p = c.prepareStatement(sql)) {
+
+        p.setInt(1, id);
+        p.executeUpdate();
+
+    } catch (SQLException e) {
+        throw new RuntimeException(e);
+    }
+}
 }
