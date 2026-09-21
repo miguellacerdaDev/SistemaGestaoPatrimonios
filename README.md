@@ -14,15 +14,9 @@ Aplicação local para uma única pessoa, sem tela de login. Os dados ficam no a
 
 1. Instale o JDK 21 ou superior e o Maven.
 2. Abra um terminal nesta pasta.
-3. Execute `mvn javafx:run`.
+3. Execute ao clicar em cima do arquivo com botao direito, run maven, e escreva "javafx:run".
 
-### Usando o NetBeans
 
-Abra a pasta que contém o arquivo `pom.xml` como **Projeto Maven**. O arquivo `nbactions.xml` já configura o botão **Executar projeto** para usar JavaFX. Caso o NetBeans mostre a configuração antiga, clique com o botão direito no projeto, escolha **Recarregar projeto** e então execute novamente.
-
-Na primeira execução, o banco SQLite será criado na mesma pasta do projeto. Para fazer uma cópia de segurança, feche o sistema e guarde uma cópia do arquivo `patrimonio-ti.db`.
-
-## Como pedir / planejar o banco de dados
 
 Para este projeto, a melhor opção é **SQLite**: é um banco em arquivo, não exige servidor, usuário ou senha. Você pode pedir assim:
 
