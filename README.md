@@ -18,8 +18,4 @@ Aplicação local para uma única pessoa, sem tela de login. Os dados ficam no a
 
 
 
-Para este projeto, a melhor opção é **SQLite**: é um banco em arquivo, não exige servidor, usuário ou senha. Você pode pedir assim:
 
-> “Quero usar SQLite no meu sistema JavaFX de gestão de patrimônios. Crie um banco local com uma tabela `patrimonio` contendo código único, nome, categoria (Computador ou Equipamento), status de uso e local de alocação; e uma tabela `manutencao` com local, tipo, data agendada e observação. Relacione as manutenções aos patrimônios quando necessário.”
-
-Se o sistema futuramente for usado por várias pessoas ao mesmo tempo, peça PostgreSQL em vez de SQLite. Nesse caso você precisará informar onde o servidor ficará hospedado e criar uma conta de acesso para a aplicação.
