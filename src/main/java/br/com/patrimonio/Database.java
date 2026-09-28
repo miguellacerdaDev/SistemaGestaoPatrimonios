@@ -4,10 +4,15 @@ import java.nio.file.Path;
 import java.sql.*;
 
 public final class Database {
-    private static final String URL = "jdbc:sqlite:" + Path.of("patrimonio-ti.db").toAbsolutePath();
-    private Database() { }
 
-    public static Connection connect() throws SQLException { return DriverManager.getConnection(URL); }
+    private static final String URL = "jdbc:sqlite:" + Path.of("patrimonio-ti.db").toAbsolutePath();
+
+    private Database() {
+    }
+
+    public static Connection connect() throws SQLException {
+        return DriverManager.getConnection(URL);
+    }
 
     public static void initialize() {
         String patrimoni = """
@@ -27,9 +32,29 @@ public final class Database {
               data_agendada TEXT NOT NULL,
               observacao TEXT
             )""";
+
+        String localizacoes = """
+        CREATE TABLE IF NOT EXISTS localizacao (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          bloco TEXT NOT NULL,
+          sala TEXT NOT NULL,
+          UNIQUE(bloco, sala)
+        )""";
+
         try (Connection c = connect(); Statement s = c.createStatement()) {
             s.execute(patrimoni);
             s.execute(manutencao);
-        } catch (SQLException e) { throw new RuntimeException("Não foi possível criar o banco de dados.", e); }
+            s.execute(localizacoes);
+
+            s.executeUpdate("""
+        INSERT OR IGNORE INTO localizacao(bloco, sala)
+        VALUES
+        ('Bloco 6', 'Sala de Redes'),
+        ('Bloco 6', 'Sala de Manutenção'),
+        ('Bloco 6', 'Laboratório de Informática')
+        """);
+        } catch (SQLException e) {
+            throw new RuntimeException("Não foi possível criar o banco de dados.", e);
+        }
     }
 }

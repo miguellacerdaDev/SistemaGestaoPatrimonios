@@ -14,14 +14,14 @@ public class App extends Application {
 
     private final PatrimonioRepository patrimonioRepo = new PatrimonioRepository();
     private final ManutencaoRepository manutencaoRepo = new ManutencaoRepository();
+    private final LocalizacaoRepository localizacaoRepo
+            = new LocalizacaoRepository();
     private final TableView<Patrimonio> tabela = new TableView<>();
     private final ComboBox<String> categoria = new ComboBox<>(FXCollections.observableArrayList("Computador", "Equipamento"));
     private final TextField busca = new TextField();
     private final TextField codigo = new TextField(), nome = new TextField(), local = new TextField();
     private final CheckBox emUso = new CheckBox("Está em uso");
-    private final ComboBox<String> bloco = new ComboBox<>(
-            FXCollections.observableArrayList("Bloco 6")
-    );
+    private final ComboBox<String> bloco = new ComboBox<>();
 
     private final ComboBox<String> sala = new ComboBox<>();
     private final Spinner<Integer> quantidade = new Spinner<>(1, 100, 1);
@@ -32,7 +32,11 @@ public class App extends Application {
         Database.initialize();
         configurarLocais();
         categoria.setValue("Computador");
-        TabPane abas = new TabPane(new Tab("Patrimônios", painelPatrimonios()), new Tab("Manutenções", painelManutencoes()));
+        TabPane abas = new TabPane(
+                new Tab("Patrimônios", painelPatrimonios()),
+                new Tab("Manutenções", painelManutencoes()),
+                new Tab("Locais", painelLocais())
+        );
         abas.getTabs().forEach(tab -> tab.setClosable(false));
         Scene cena = new Scene(abas, 1000, 650);
         cena.getStylesheets().add(getClass().getResource("/br/com/patrimonio/estilo.css").toExternalForm());
@@ -43,22 +47,31 @@ public class App extends Application {
     }
 
     private void configurarLocais() {
-        bloco.setValue("Bloco 6");
+        bloco.setItems(FXCollections.observableArrayList(
+                localizacaoRepo.listarBlocos()
+        ));
 
-        atualizarSalas();
+        if (!bloco.getItems().isEmpty()) {
+            bloco.setValue(bloco.getItems().get(0));
+            atualizarSalas();
+        }
 
         bloco.setOnAction(e -> atualizarSalas());
     }
 
     private void atualizarSalas() {
-        if ("Bloco 6".equals(bloco.getValue())) {
-            sala.setItems(FXCollections.observableArrayList(
-                    "Sala de Redes",
-                    "Sala de Manutenção",
-                    "Laboratório de Informática"
-            ));
+        if (bloco.getValue() == null) {
+            sala.getItems().clear();
+            sala.setValue(null);
+            return;
+        }
 
-            sala.setValue("Sala de Redes");
+        sala.setItems(FXCollections.observableArrayList(
+                localizacaoRepo.listarSalas(bloco.getValue())
+        ));
+
+        if (!sala.getItems().isEmpty()) {
+            sala.setValue(sala.getItems().get(0));
         }
     }
 
@@ -163,8 +176,10 @@ public class App extends Application {
 
         codigo.clear();
         nome.clear();
-        bloco.setValue("Bloco 6");
-        atualizarSalas();
+        if (!bloco.getItems().isEmpty()) {
+            bloco.setValue(bloco.getItems().get(0));
+            atualizarSalas();
+        }
 
         emUso.setSelected(true);
         quantidade.getValueFactory().setValue(1);
@@ -172,9 +187,9 @@ public class App extends Application {
 
     private void salvar() {
         if (codigo.getText().isBlank()
+                || nome.getText().isBlank()
                 || bloco.getValue() == null
-                || sala.getValue() == null
-                || local.getText().isBlank()) {
+                || sala.getValue() == null) {
 
             aviso("Preencha código, nome e local.");
             return;
@@ -210,6 +225,127 @@ public class App extends Application {
         } catch (RuntimeException e) {
             aviso(e.getMessage());
         }
+    }
+
+    private Pane painelLocais() {
+        TextField campoBloco = new TextField();
+        campoBloco.setPromptText("Ex.: Bloco 6");
+
+        TextField campoSala = new TextField();
+        campoSala.setPromptText("Ex.: Laboratório de Informática");
+
+        TableView<LocalizacaoRepository.Localizacao> tabelaLocais
+                = new TableView<>();
+
+        tabelaLocais.getColumns().addAll(
+                localizacaoCol(
+                        "Bloco",
+                        LocalizacaoRepository.Localizacao::bloco
+                ),
+                localizacaoCol(
+                        "Sala",
+                        LocalizacaoRepository.Localizacao::sala
+                )
+        );
+
+        tabelaLocais.setColumnResizePolicy(
+                TableView.CONSTRAINED_RESIZE_POLICY
+        );
+
+        Runnable atualizar = () -> {
+            tabelaLocais.setItems(FXCollections.observableArrayList(
+                    localizacaoRepo.listarTodas()
+            ));
+
+            configurarLocais();
+        };
+
+        atualizar.run();
+
+        Button adicionar = new Button("Adicionar sala");
+
+        adicionar.setOnAction(e -> {
+            if (campoBloco.getText().isBlank()
+                    || campoSala.getText().isBlank()) {
+
+                aviso("Informe o bloco e o nome da sala.");
+                return;
+            }
+
+            try {
+                localizacaoRepo.salvar(
+                        campoBloco.getText(),
+                        campoSala.getText()
+                );
+
+                campoSala.clear();
+                atualizar.run();
+
+            } catch (RuntimeException ex) {
+                aviso(ex.getMessage());
+            }
+        });
+
+        Button excluir = new Button("Excluir local selecionado");
+        excluir.getStyleClass().add("danger-button");
+
+        excluir.setOnAction(e -> {
+            LocalizacaoRepository.Localizacao selecionado
+                    = tabelaLocais.getSelectionModel().getSelectedItem();
+
+            if (selecionado == null) {
+                aviso("Selecione um local para excluir.");
+                return;
+            }
+
+            Alert confirmacao = new Alert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Deseja excluir o local selecionado?",
+                    ButtonType.YES,
+                    ButtonType.NO
+            );
+
+            confirmacao.setHeaderText("Confirmar exclusão");
+
+            if (confirmacao.showAndWait().orElse(ButtonType.NO)
+                    == ButtonType.YES) {
+
+                localizacaoRepo.excluir(selecionado.id());
+                atualizar.run();
+            }
+        });
+
+        GridPane formulario = new GridPane();
+        formulario.setHgap(10);
+        formulario.setVgap(10);
+
+        formulario.addRow(
+                0,
+                new Label("Bloco:*"), campoBloco,
+                new Label("Sala:*"), campoSala
+        );
+
+        GridPane.setHgrow(campoBloco, Priority.ALWAYS);
+        GridPane.setHgrow(campoSala, Priority.ALWAYS);
+
+        HBox acoes = new HBox(10, adicionar, excluir);
+
+        Label titulo = new Label("Gerenciar locais");
+        titulo.getStyleClass().add("page-title");
+
+        VBox cartao = new VBox(12, titulo, formulario, acoes);
+        cartao.getStyleClass().add("card");
+
+        Label tituloTabela = new Label("Blocos e salas cadastrados");
+        tituloTabela.getStyleClass().add("section-title");
+
+        VBox raiz = new VBox(18, cartao, tituloTabela, tabelaLocais);
+        raiz.getStyleClass().add("content-area");
+        raiz.setPadding(new Insets(24));
+
+        VBox.setVgrow(tabelaLocais, Priority.ALWAYS);
+
+        return raiz;
     }
 
     private Pane painelManutencoes() {
@@ -316,6 +452,25 @@ public class App extends Application {
         return raiz;
 
     }
+    
+    private TableColumn<LocalizacaoRepository.Localizacao, String>
+        localizacaoCol(
+                String titulo,
+                java.util.function.Function<
+                        LocalizacaoRepository.Localizacao,
+                        String
+                > valor
+        ) {
+
+    TableColumn<LocalizacaoRepository.Localizacao, String> coluna =
+            new TableColumn<>(titulo);
+
+    coluna.setCellValueFactory(
+            item -> new SimpleStringProperty(valor.apply(item.getValue()))
+    );
+
+    return coluna;
+}
 
     private TableColumn<ManutencaoRepository.Manutencao, String> manutCol(String t, java.util.function.Function<ManutencaoRepository.Manutencao, String> f) {
         TableColumn<ManutencaoRepository.Manutencao, String> c = new TableColumn<>(t);
