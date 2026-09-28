@@ -19,6 +19,7 @@ public class App extends Application {
     private final TextField busca = new TextField();
     private final TextField codigo = new TextField(), nome = new TextField(), local = new TextField();
     private final CheckBox emUso = new CheckBox("Está em uso");
+    private final Spinner<Integer> quantidade = new Spinner<>(1, 100, 1);
     private Patrimonio selecionado;
 
     @Override
@@ -54,8 +55,15 @@ public class App extends Application {
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
-        form.addRow(0, new Label("Código:*"), codigo, new Label("Nome:*"), nome);
-        form.addRow(1, new Label("Local alocado:*"), local, emUso);
+        form.addRow(0, new Label("Código inicial:*"), codigo, new Label("Nome:*"), nome);
+
+        form.addRow(
+                1,
+                new Label("Local alocado:*"), local,
+                new Label("Quantidade:"), quantidade,
+                emUso
+        );
+
         GridPane.setHgrow(codigo, Priority.ALWAYS);
         GridPane.setHgrow(nome, Priority.ALWAYS);
         GridPane.setHgrow(local, Priority.ALWAYS);
@@ -98,27 +106,57 @@ public class App extends Application {
     }
 
     private void limpar() {
-        selecionado = null;
-        tabela.getSelectionModel().clearSelection();
-        codigo.clear();
-        nome.clear();
-        local.clear();
-        emUso.setSelected(true);
+    selecionado = null;
+    tabela.getSelectionModel().clearSelection();
+
+    codigo.clear();
+    nome.clear();
+    local.clear();
+
+    emUso.setSelected(true);
+    quantidade.getValueFactory().setValue(1);
+}
+
+   private void salvar() {
+    if (codigo.getText().isBlank()
+            || nome.getText().isBlank()
+            || local.getText().isBlank()) {
+
+        aviso("Preencha código, nome e local.");
+        return;
     }
 
-    private void salvar() {
-        if (codigo.getText().isBlank() || nome.getText().isBlank() || local.getText().isBlank()) {
-            aviso("Preencha código, nome e local.");
-            return;
+    try {
+        if (selecionado == null) {
+            patrimonioRepo.salvarEmLote(
+                    codigo.getText().trim(),
+                    nome.getText().trim(),
+                    categoria.getValue(),
+                    emUso.isSelected(),
+                    local.getText().trim(),
+                    quantidade.getValue()
+            );
+
+        } else {
+            patrimonioRepo.salvar(
+                    new Patrimonio(
+                            selecionado.id(),
+                            codigo.getText().trim(),
+                            nome.getText().trim(),
+                            categoria.getValue(),
+                            emUso.isSelected(),
+                            local.getText().trim()
+                    )
+            );
         }
-        try {
-            patrimonioRepo.salvar(new Patrimonio(selecionado == null ? 0 : selecionado.id(), codigo.getText().trim(), nome.getText().trim(), categoria.getValue(), emUso.isSelected(), local.getText().trim()));
-            limpar();
-            atualizarTabela();
-        } catch (RuntimeException e) {
-            aviso(e.getMessage());
-        }
+
+        limpar();
+        atualizarTabela();
+
+    } catch (RuntimeException e) {
+        aviso(e.getMessage());
     }
+}
 
     private Pane painelManutencoes() {
         TextField lugar = new TextField();
