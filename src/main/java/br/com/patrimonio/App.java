@@ -19,12 +19,18 @@ public class App extends Application {
     private final TextField busca = new TextField();
     private final TextField codigo = new TextField(), nome = new TextField(), local = new TextField();
     private final CheckBox emUso = new CheckBox("Está em uso");
+    private final ComboBox<String> bloco = new ComboBox<>(
+            FXCollections.observableArrayList("Bloco 6")
+    );
+
+    private final ComboBox<String> sala = new ComboBox<>();
     private final Spinner<Integer> quantidade = new Spinner<>(1, 100, 1);
     private Patrimonio selecionado;
 
     @Override
     public void start(Stage stage) {
         Database.initialize();
+        configurarLocais();
         categoria.setValue("Computador");
         TabPane abas = new TabPane(new Tab("Patrimônios", painelPatrimonios()), new Tab("Manutenções", painelManutencoes()));
         abas.getTabs().forEach(tab -> tab.setClosable(false));
@@ -34,6 +40,30 @@ public class App extends Application {
         stage.setTitle("Gestão de Patrimônios de TI");
         stage.show();
         atualizarTabela();
+    }
+
+    private void configurarLocais() {
+        bloco.setValue("Bloco 6");
+
+        atualizarSalas();
+
+        bloco.setOnAction(e -> atualizarSalas());
+    }
+
+    private void atualizarSalas() {
+        if ("Bloco 6".equals(bloco.getValue())) {
+            sala.setItems(FXCollections.observableArrayList(
+                    "Sala de Redes",
+                    "Sala de Manutenção",
+                    "Laboratório de Informática"
+            ));
+
+            sala.setValue("Sala de Redes");
+        }
+    }
+
+    private String localSelecionado() {
+        return bloco.getValue() + " — " + sala.getValue();
     }
 
     private Pane painelPatrimonios() {
@@ -55,18 +85,29 @@ public class App extends Application {
         GridPane form = new GridPane();
         form.setHgap(10);
         form.setVgap(10);
-        form.addRow(0, new Label("Código inicial:*"), codigo, new Label("Nome:*"), nome);
+
+        form.addRow(
+                0,
+                new Label("Código inicial:*"), codigo,
+                new Label("Nome:*"), nome
+        );
 
         form.addRow(
                 1,
-                new Label("Local alocado:*"), local,
+                new Label("Bloco:*"), bloco,
+                new Label("Sala:*"), sala
+        );
+
+        form.addRow(
+                2,
                 new Label("Quantidade:"), quantidade,
                 emUso
         );
 
         GridPane.setHgrow(codigo, Priority.ALWAYS);
         GridPane.setHgrow(nome, Priority.ALWAYS);
-        GridPane.setHgrow(local, Priority.ALWAYS);
+        GridPane.setHgrow(bloco, Priority.ALWAYS);
+        GridPane.setHgrow(sala, Priority.ALWAYS);
         Button salvar = new Button("Salvar patrimônio");
         salvar.setOnAction(e -> salvar());
         Button novo = new Button("Novo / Limpar");
@@ -99,64 +140,77 @@ public class App extends Application {
 
     private void preencher(Patrimonio p) {
         selecionado = p;
+
         codigo.setText(p.codigo());
         nome.setText(p.nome());
-        local.setText(p.localAlocado());
         emUso.setSelected(p.emUso());
+
+        String[] partes = p.localAlocado().split(" — ", 2);
+
+        if (partes.length == 2 && bloco.getItems().contains(partes[0])) {
+            bloco.setValue(partes[0]);
+            atualizarSalas();
+
+            if (sala.getItems().contains(partes[1])) {
+                sala.setValue(partes[1]);
+            }
+        }
     }
 
     private void limpar() {
-    selecionado = null;
-    tabela.getSelectionModel().clearSelection();
+        selecionado = null;
+        tabela.getSelectionModel().clearSelection();
 
-    codigo.clear();
-    nome.clear();
-    local.clear();
+        codigo.clear();
+        nome.clear();
+        bloco.setValue("Bloco 6");
+        atualizarSalas();
 
-    emUso.setSelected(true);
-    quantidade.getValueFactory().setValue(1);
-}
-
-   private void salvar() {
-    if (codigo.getText().isBlank()
-            || nome.getText().isBlank()
-            || local.getText().isBlank()) {
-
-        aviso("Preencha código, nome e local.");
-        return;
+        emUso.setSelected(true);
+        quantidade.getValueFactory().setValue(1);
     }
 
-    try {
-        if (selecionado == null) {
-            patrimonioRepo.salvarEmLote(
-                    codigo.getText().trim(),
-                    nome.getText().trim(),
-                    categoria.getValue(),
-                    emUso.isSelected(),
-                    local.getText().trim(),
-                    quantidade.getValue()
-            );
+    private void salvar() {
+        if (codigo.getText().isBlank()
+                || bloco.getValue() == null
+                || sala.getValue() == null
+                || local.getText().isBlank()) {
 
-        } else {
-            patrimonioRepo.salvar(
-                    new Patrimonio(
-                            selecionado.id(),
-                            codigo.getText().trim(),
-                            nome.getText().trim(),
-                            categoria.getValue(),
-                            emUso.isSelected(),
-                            local.getText().trim()
-                    )
-            );
+            aviso("Preencha código, nome e local.");
+            return;
         }
 
-        limpar();
-        atualizarTabela();
+        try {
+            if (selecionado == null) {
+                patrimonioRepo.salvarEmLote(
+                        codigo.getText().trim(),
+                        nome.getText().trim(),
+                        categoria.getValue(),
+                        emUso.isSelected(),
+                        localSelecionado(),
+                        quantidade.getValue()
+                );
 
-    } catch (RuntimeException e) {
-        aviso(e.getMessage());
+            } else {
+                patrimonioRepo.salvar(
+                        new Patrimonio(
+                                selecionado.id(),
+                                codigo.getText().trim(),
+                                nome.getText().trim(),
+                                categoria.getValue(),
+                                emUso.isSelected(),
+                                localSelecionado()
+                        )
+                );
+            }
+
+            limpar();
+            atualizarTabela();
+
+        } catch (RuntimeException e) {
+            aviso(e.getMessage());
+        }
     }
-}
 
     private Pane painelManutencoes() {
         TextField lugar = new TextField();
