@@ -1,11 +1,19 @@
 package br.com.patrimonio;
 
+import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.sql.*;
 
 public final class Database {
 
-    private static final String URL = "jdbc:sqlite:" + Path.of("patrimonio-ti.db").toAbsolutePath();
+    private static final Path DIRETORIO_DADOS = Path.of(
+            System.getenv("LOCALAPPDATA"),
+            "GestaoPatrimonioTI"
+    );
+
+    private static final String URL = "jdbc:sqlite:"
+            + DIRETORIO_DADOS.resolve("patrimonio-ti.db").toAbsolutePath();
 
     private Database() {
     }
@@ -15,6 +23,14 @@ public final class Database {
     }
 
     public static void initialize() {
+        try {
+            Files.createDirectories(DIRETORIO_DADOS);
+        } catch (IOException e) {
+            throw new RuntimeException(
+                    "Não foi possível criar a pasta de dados da aplicação.",
+                    e
+            );
+        }
         String patrimoni = """
             CREATE TABLE IF NOT EXISTS patrimonio (
               id INTEGER PRIMARY KEY AUTOINCREMENT,
