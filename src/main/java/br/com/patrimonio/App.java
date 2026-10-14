@@ -22,6 +22,7 @@ public class App extends Application {
     private final TextField codigo = new TextField(), nome = new TextField(), local = new TextField();
     private final CheckBox emUso = new CheckBox("Está em uso");
     private final ComboBox<String> bloco = new ComboBox<>();
+    private final ComboBox<String> filtroBloco = new ComboBox<>();
 
     private final ComboBox<String> sala = new ComboBox<>();
     private final Spinner<Integer> quantidade = new Spinner<>(1, 100, 1);
@@ -47,9 +48,26 @@ public class App extends Application {
     }
 
     private void configurarLocais() {
+        String filtroAtual = filtroBloco.getValue();
+
         bloco.setItems(FXCollections.observableArrayList(
                 localizacaoRepo.listarBlocos()
         ));
+
+        filtroBloco.setItems(FXCollections.observableArrayList(
+                localizacaoRepo.listarBlocos()
+        ));
+
+        filtroBloco.getItems().add(0, "Todos os blocos");
+
+        if (filtroAtual != null
+                && filtroBloco.getItems().contains(filtroAtual)) {
+
+            filtroBloco.setValue(filtroAtual);
+
+        } else {
+            filtroBloco.setValue("Todos os blocos");
+        }
 
         if (!bloco.getItems().isEmpty()) {
             bloco.setValue(bloco.getItems().get(0));
@@ -132,7 +150,19 @@ public class App extends Application {
         caixaForm.getStyleClass().add("card");
         Label titulo = new Label("Categoria:");
         titulo.getStyleClass().add("filter-label");
-        HBox filtros = new HBox(10, titulo, categoria, busca);
+        Label tituloBloco = new Label("Exibir bloco:");
+        tituloBloco.getStyleClass().add("filter-label");
+
+        filtroBloco.setOnAction(e -> atualizarTabela());
+
+        HBox filtros = new HBox(
+                10,
+                titulo,
+                categoria,
+                tituloBloco,
+                filtroBloco,
+                busca
+        );
         HBox.setHgrow(busca, Priority.ALWAYS);
         VBox raiz = new VBox(14, filtros, tabela, caixaForm);
         raiz.getStyleClass().add("content-area");
@@ -148,7 +178,24 @@ public class App extends Application {
     }
 
     private void atualizarTabela() {
-        tabela.setItems(FXCollections.observableArrayList(patrimonioRepo.buscar(categoria.getValue(), busca.getText())));
+        var itens = patrimonioRepo.buscar(
+                categoria.getValue(),
+                busca.getText()
+        );
+
+        if (filtroBloco.getValue() != null
+                && !filtroBloco.getValue().equals("Todos os blocos")) {
+
+            String prefixo = filtroBloco.getValue() + " — ";
+
+            itens = itens.stream()
+                    .filter(item
+                            -> item.localAlocado().startsWith(prefixo)
+                    )
+                    .toList();
+        }
+
+        tabela.setItems(FXCollections.observableArrayList(itens));
     }
 
     private void preencher(Patrimonio p) {
@@ -452,25 +499,23 @@ public class App extends Application {
         return raiz;
 
     }
-    
+
     private TableColumn<LocalizacaoRepository.Localizacao, String>
-        localizacaoCol(
-                String titulo,
-                java.util.function.Function<
-                        LocalizacaoRepository.Localizacao,
-                        String
-                > valor
-        ) {
+            localizacaoCol(
+                    String titulo,
+                    java.util.function.Function<
+                        LocalizacaoRepository.Localizacao, String> valor
+            ) {
 
-    TableColumn<LocalizacaoRepository.Localizacao, String> coluna =
-            new TableColumn<>(titulo);
+        TableColumn<LocalizacaoRepository.Localizacao, String> coluna
+                = new TableColumn<>(titulo);
 
-    coluna.setCellValueFactory(
-            item -> new SimpleStringProperty(valor.apply(item.getValue()))
-    );
+        coluna.setCellValueFactory(
+                item -> new SimpleStringProperty(valor.apply(item.getValue()))
+        );
 
-    return coluna;
-}
+        return coluna;
+    }
 
     private TableColumn<ManutencaoRepository.Manutencao, String> manutCol(String t, java.util.function.Function<ManutencaoRepository.Manutencao, String> f) {
         TableColumn<ManutencaoRepository.Manutencao, String> c = new TableColumn<>(t);
