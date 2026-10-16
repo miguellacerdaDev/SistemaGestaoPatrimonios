@@ -141,9 +141,38 @@ public class App extends Application {
         GridPane.setHgrow(sala, Priority.ALWAYS);
         Button salvar = new Button("Salvar patrimônio");
         salvar.setOnAction(e -> salvar());
+
         Button novo = new Button("Novo / Limpar");
         novo.setOnAction(e -> limpar());
-        HBox botoes = new HBox(10, salvar, novo);
+
+        Button excluir = new Button("Excluir patrimônio");
+        excluir.getStyleClass().add("danger-button");
+
+        excluir.setOnAction(e -> {
+            if (selecionado == null) {
+                aviso("Selecione um patrimônio na tabela para excluí-lo.");
+                return;
+            }
+
+            Alert confirmacao = new Alert(
+                    Alert.AlertType.CONFIRMATION,
+                    "Deseja excluir o patrimônio selecionado?",
+                    ButtonType.YES,
+                    ButtonType.NO
+            );
+
+            confirmacao.setHeaderText("Confirmar exclusão");
+
+            if (confirmacao.showAndWait().orElse(ButtonType.NO)
+                    == ButtonType.YES) {
+
+                patrimonioRepo.excluir(selecionado.id());
+                limpar();
+                atualizarTabela();
+            }
+        });
+
+        HBox botoes = new HBox(10, salvar, novo, excluir);
         Label subtituloCadastro = new Label("Cadastro e edição");
         subtituloCadastro.getStyleClass().add("section-title");
         VBox caixaForm = new VBox(10, subtituloCadastro, form, botoes);
